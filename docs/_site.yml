@@ -1,11 +1,20 @@
 name: 'Vis by Beixuan'
 output_dir: 'docs'
 navbar: 
-  title: '503 portfolio'
+  title: '503 Portfolio'
   left: 
     - text: 'Home'
       href: 'index.html'
-    - text: 'HW6'
+    - text: 'Geospatial Visualization'
       href: 'geospatial.html'
-    - text: 'flexdashboard'
+    - text: 'Network'
+      href: 'networks.html'
+    - text: 'Flexdashboard'
       href: 'https://beixuan-jia.github.io/503_Final_Proj/'
+    - text: 'Mini-project'
+      href: 'http://bjia.georgetown.domains/index.html'
+    - text: 'COVID-19 Data Challenge'
+      href: 'https://backupcovidviz.herokuapp.com/'
+output:
+  html_document:
+    theme: darkly
