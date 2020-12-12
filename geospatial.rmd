@@ -1,0 +1,304 @@
+---
+title: "A6 - geospatial"
+author: "Beixuan Jia"
+date: "11/1/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r}
+library(sf)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(scales)
+options(scipen = 999)
+```
+
+```{r}
+pres <- read.csv("countypres_2000-2016.csv")
+unemploy <- read.csv("unemployment.csv")
+```
+
+```{r}
+unemploy <- unemploy[-c(1:6),]
+names(unemploy) <- as.matrix(unemploy[1, ])
+unemploy <- unemploy[-1, ]
+unemploy[] <- lapply(unemploy, function(x) type.convert(as.character(x)))
+```
+
+```{r}
+unemploy_sub <- unemploy[,c("FIPStxt", "Unemployment_rate_2008", "Unemployment_rate_2012", "Unemployment_rate_2016")]
+```
+
+```{r}
+pres_sub <- subset(pres, year == 2008 | year == 2012 | year == 2016)
+```
+
+```{r}
+df <- left_join(pres_sub, unemploy_sub, by=c('FIPS'='FIPStxt'))
+```
+
+```{r}
+df_demo <- subset(df, party == "democrat")
+df_demo$demo_win <- (df_demo$candidatevotes/df_demo$totalvotes)
+head(df_demo)
+```
+
+```{r}
+df_demo$FIPS <- formatC(df_demo$FIPS, width = 5, format = "d", flag = "0")
+```
+
+```{r}
+class(df_demo$demo_win)
+# df_demo$demo_win = as.numeric(df_demo$demo_win)
+```
+
+```{r}
+# us.map <- readOGR(dsn = ".", layer = "tl_2019_us_county", stringsAsFactors = FALSE)
+us.map <- st_read("tl_2019_us_county.shp", stringsAsFactors = FALSE)
+```
+
+```{r}
+names(us.map)[names(us.map)=='GEOID'] <- 'FIPS'
+```
+
+```{r}
+df_demo$FIPS = as.character(df_demo$FIPS)
+```
+
+```{r}
+us.map <- us.map %>%
+  left_join(df_demo, by = "FIPS")
+```
+
+```{r}
+# us.map_new = us.map %>% filter(INTPTLAT > 22 & INTPTLAT < 50 & INTPTLON < -66 & INTPTLON > -127)
+us.inner <- subset(us.map, state_po != "HI")
+us.inner <- subset(us.inner, state_po != "AK")
+```
+
+```{r}
+library(tmap)
+```
+
+#### R Programming 
+```{r}
+warning=FALSE
+
+plot_panel <- function(x) {
+  ## define state and its counties
+  counties <- subset(us.inner, state_po == x)
+  counties <- counties[,c("year", "demo_win", "Unemployment_rate_2008",
+                          "Unemployment_rate_2012", "Unemployment_rate_2016", "INTPTLAT",
+                          "INTPTLON")]
+  head(counties)
+  
+  ## adjust title and legends
+  
+  if (x == "PA") {
+    bbox <- st_bbox(counties) # current bounding box
+    
+    xrange <- bbox$xmax - bbox$xmin # range of x values
+    yrange <- bbox$ymax - bbox$ymin # range of y values
+    
+    bbox[1] <- bbox[1] - (0.3 * xrange) # xmin - left
+    # bbox_new[3] <- bbox_new[3] + (0.1 * xrange) # xmax - right
+    # bbox_new[2] <- bbox_new[2] - (0.1 * yrange) # ymin - bottom
+    bbox[4] <- bbox[4] + (0.2 * yrange) # ymax - top
+    
+    bbox <- bbox %>%  # take the bounding box ...
+      st_as_sfc() # ... and make it a sf polygon
+  } else {
+    bbox <- st_bbox(counties) # current bounding box
+    
+    xrange <- bbox$xmax - bbox$xmin # range of x values
+    yrange <- bbox$ymax - bbox$ymin # range of y values
+    
+    # bbox_ca[1] <- bbox_ca[1] - (0.3 * xrange) # xmin - left
+    # bbox_new[3] <- bbox_new[3] + (0.1 * xrange) # xmax - right
+    # bbox_new[2] <- bbox_new[2] - (0.1 * yrange) # ymin - bottom
+    bbox[4] <- bbox[4] + (0.2 * yrange) # ymax - top
+    
+    bbox <- bbox %>%  # take the bounding box ...
+      st_as_sfc() # ... and make it a sf polygon
+  }
+  
+  ## define plots
+  w1 <- tm_shape(counties %>% filter(year == 2008), bbox = bbox) +
+    tm_polygons(col = "demo_win", title = 'won by democrats', style = "quantile", 
+                palette = "Blues", border.alpha = 0.9) + 
+    tm_layout(legend.position = c("left", "bottom"),
+              legend.title.size = 0.7, legend.text.size = 0.5,
+              title = paste('Ratio of Vote Won by Democrats in', x, 'in 2008'), frame = T, 
+              title.size = 0.7, title.position = c('center', 'top')) 
+
+  w2 <- tm_shape(counties, bbox = bbox) +
+    tm_polygons(col = "Unemployment_rate_2008", title = "unemployment rate", 
+                style = "quantile", border.alpha = 0.9) + 
+    tm_layout(legend.position = c("left", "bottom"),
+              legend.title.size = 0.7, legend.text.size = 0.5,
+              title = paste('Unemployment Rate in', x, 'in 2008'), frame = T, 
+              title.size = 0.7, title.position = c('center', 'top')) 
+  
+  w3 <- tm_shape(counties %>% filter(year == 2012), bbox = bbox) +
+    tm_polygons(col = "demo_win", title = 'won by democrats', style = "quantile",
+                palette = "Blues", border.alpha = 0.9) + 
+    tm_layout(legend.position = c("left", "bottom"),
+              legend.title.size = 0.7, legend.text.size = 0.5,
+              title = paste('Ratio of Vote Won by Democrats in', x, 'in 2012'), frame = T, 
+              title.size = 0.7, title.position = c('center', 'top'))
+  
+  w4 <- tm_shape(counties, bbox = bbox) +
+    tm_polygons(col = "Unemployment_rate_2012", title = "unemployment rate", 
+                style = "quantile", border.alpha = 0.9) + 
+    tm_layout(legend.position = c("left", "bottom"),
+              legend.title.size = 0.7, legend.text.size = 0.5,
+              title= paste('Unemployment Rate in', x, 'in 2012'), frame = T, 
+              title.size = 0.7, title.position = c('center', 'top'))
+  
+  w5 <- tm_shape(counties %>% filter(year == 2016), bbox = bbox) +
+    tm_polygons(col = "demo_win", title = 'won by democrats', style = "quantile",
+                palette = "Blues", border.alpha = 0.9) + 
+    tm_layout(legend.position = c("left", "bottom"),
+              legend.title.size = 0.7, legend.text.size = 0.5,
+              title = paste('Ratio of Vote Won by Democrats in', x, 'in 2016'), frame = T, 
+              title.size = 0.7, title.position = c('center', 'top'))
+  
+  w6 <- tm_shape(counties, bbox = bbox) +
+    tm_polygons(col = "Unemployment_rate_2016", title = "unemployment rate", 
+                style = "quantile", border.alpha = 0.9) + 
+    tm_layout(legend.position = c("left", "bottom"),
+              legend.title.size = 0.7, legend.text.size = 0.5,
+              title = paste('Unemployment Rate in', x, 'in 2016'), frame = T, 
+              title.size = 0.7, title.position = c('center', 'top'))
+  
+  ## plot the panel
+  tmap_mode("plot")
+  tmap_arrange(w1, w2, w3, w4, w5, w6, ncol = 2, nrow = 3, widths = c(.5, .5))
+}
+
+plot_panel("TX")
+plot_panel("PA")
+plot_panel("CA")
+```
+
+
+<!-- #### Python Programming  -->
+<!-- ```{r setup, include = FALSE} -->
+<!-- knitr::opts_chunk$set(warning = FALSE, message = FALSE) -->
+
+<!-- library(reticulate) -->
+<!-- use_condaenv("allennlp", required=TRUE) -->
+<!-- ``` -->
+
+<!-- ```{python} -->
+<!-- import pandas as pd -->
+<!-- import numpy as np -->
+<!-- import geopandas as gpd -->
+<!-- import shapefile as shp -->
+<!-- import matplotlib.pyplot as plt -->
+<!-- import plotly.figure_factory as ff -->
+<!-- from plotly.offline import download_plotlyjs, init_notebook_mode,  plot -->
+<!-- from plotly.graph_objs import * -->
+<!-- init_notebook_mode() -->
+<!-- import descartes -->
+<!-- ``` -->
+
+<!-- ```{python} -->
+<!-- pd.set_option('display.max_columns', None) -->
+
+<!-- pres = pd.read_csv('countypres_2000-2016.csv') -->
+<!-- unemploy = pd.read_csv("unemployment.csv") -->
+
+<!-- unemploy.columns = unemploy.iloc[6] -->
+<!-- unemploy = unemploy.drop(unemploy.index[0:7]) -->
+
+<!-- unemploy_sub = unemploy.loc[:, ["FIPStxt", "Unemployment_rate_2008", "Unemployment_rate_2012", "Unemployment_rate_2016"]] -->
+<!-- pres_sub = pres[(pres["year"] == 2008) | (pres["year"] == 2012) | (pres["year"] == 2016)] -->
+
+<!-- unemploy_sub.rename(columns={'FIPStxt':'FIPS'}, inplace=True) -->
+<!-- unemploy_sub['FIPS'] = unemploy_sub['FIPS'].astype(int) -->
+
+
+<!-- df = pd.merge(pres_sub, unemploy_sub, on = "FIPS") -->
+<!-- df['FIPS'] = df['FIPS'].astype(int) -->
+<!-- df['FIPS'] = df['FIPS'].astype(str) -->
+
+<!-- df['Unemployment_rate_2008'] = df['Unemployment_rate_2008'].astype(float) -->
+<!-- df['Unemployment_rate_2012'] = df['Unemployment_rate_2012'].astype(float) -->
+<!-- df['Unemployment_rate_2016'] = df['Unemployment_rate_2016'].astype(float) -->
+
+<!-- df_demo = df[df["party"] == "democrat"] -->
+<!-- df_demo['FIPS'] = df_demo['FIPS'].apply(lambda x: x.zfill(5)) -->
+<!-- df_demo['demo_win'] = df_demo['candidatevotes']/df_demo['totalvotes'] -->
+
+<!-- us_map = gpd.read_file('tl_2019_us_county.shp') -->
+<!-- #us_map = pd.DataFrame(us_map) -->
+<!-- us_map = us_map.rename(columns={"GEOID": "FIPS"}) -->
+<!-- df_demo["FIPS"] = df_demo["FIPS"].astype("string") -->
+<!-- us_map = pd.merge(us_map, df_demo, on = "FIPS") -->
+<!-- #us_map.head(10) -->
+
+<!-- us_inner = us_map[(us_map["state_po"] != "HI")] -->
+<!-- us_inner = us_inner[(us_inner["state_po"] != "AK")] -->
+<!-- ``` -->
+
+<!-- ```{python} -->
+<!-- def plot_map(x):  -->
+<!--     counties = us_inner[us_inner["state_po"] == x] -->
+<!--     fig, axes = plt.subplots(3, 2, figsize=(12, 8)) -->
+
+<!--     ## demo_win in 2008 -->
+<!--     axes[0,0].set_title('Ratio of Vote Won by Democrats in '+ x +' in 2008', fontsize=16) -->
+<!--     demo2008 = counties[counties["year"] == 2008] -->
+<!--     #vmin1, vmax1 = min(demo2008['demo_win']), max(demo2008['demo_win']) -->
+
+<!--     fig3 = demo2008.plot(column=demo2008['demo_win'], cmap='Blues', ax = axes[0,0],  -->
+<!--                      legend = True, -->
+<!--                      linewidth=0.8, edgecolor='0.8') -->
+
+<!--     #fig4 = fig3.get_figure() -->
+
+<!--     ## unemploy in 2008 -->
+<!--     axes[0,1].set_title('Unemployment Rate in '+ x +' in 2008', fontsize=16) -->
+<!--     fig1 = counties.plot(column=counties['Unemployment_rate_2008'], cmap='YlOrRd',  -->
+<!--                             legend = True, -->
+<!--                             ax = axes[0,1], linewidth=0.8, edgecolor='0.8') -->
+
+<!--     ## demo_win in 2012 -->
+<!--     axes[1,0].set_title('Ratio of Vote Won by Democrats in '+ x +' in 2012', fontsize=16) -->
+<!--     demo2012 = counties[counties["year"] == 2012] -->
+
+<!--     fig5 = demo2012.plot(column=demo2012['demo_win'], cmap='Blues',  -->
+<!--                          legend = True, ax = axes[1,0], linewidth=0.8, edgecolor='0.8') -->
+
+<!--     ## unemploy in 2012 -->
+<!--     axes[1,1].set_title('Unemployment Rate in '+ x + ' in 2012', fontsize=16) -->
+
+<!--     fig7 = counties.plot(column=counties['Unemployment_rate_2012'], cmap='YlOrRd',  -->
+<!--                             legend = True, ax = axes[1,1], linewidth=0.8, edgecolor='0.8') -->
+
+<!--     ## demo_win in 2016 -->
+<!--     axes[2,0].set_title('Ratio of Vote Won by Democrats in '+ x +' in 2016', fontsize=16) -->
+<!--     demo2016 = counties[counties["year"] == 2016] -->
+
+<!--     fig9 = demo2016.plot(column=demo2016['demo_win'], cmap='Blues', ax = axes[2,0], -->
+<!--                      legend = True, linewidth=0.8, edgecolor='0.8') -->
+
+<!--     ## unemploy in 2016 -->
+<!--     axes[2,1].set_title('Unemployment Rate in '+ x +' in 2016', fontsize=16) -->
+
+<!--     fig11 = counties.plot(column=counties['Unemployment_rate_2016'], cmap='YlOrRd',  -->
+<!--                             legend = True, ax = axes[2,1], linewidth=0.8, edgecolor='0.8') -->
+
+<!--     fig.tight_layout() -->
+<!-- ``` -->
+
+<!-- ```{python} -->
+<!-- plot_map('TX') -->
+<!-- plot_map('PA') -->
+<!-- plot_map('CA') -->
+<!-- ``` -->
