@@ -1,8 +1,15 @@
 ---
-title: "welcome"
-author: "Beixuan Jia"
-date: "12/11/2020"
 output: html_document
 ---
 
-My name is Beixuan, Welcome!
+
+<h1><center>Welcome to Beixuan's portfolio!</center></h1>
+<br class="line-break">
+<br class="line-break">
+<center><img src="gtown.jpg" style="width:40%"></center>
+<br class="line-break">
+<br class="line-break">
+<h5>My name is Beixuan, welcome to my data visualization dashboard! I will be updating my website once in a while. Looking forward to connecting with you! :) </h5>
+<br class="line-break">
+<h5>When I have time, I love taking pictures and exploring cool restaurants.</h5>
+
