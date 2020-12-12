@@ -1,0 +1,9 @@
+name: 'Beixuan'
+navbar: 
+  title: '503 portfolio'
+  left: 
+    - text: 'Home'
+      href: 'index.html'
+    - text: 'HW6'
+      href: 'geospatial.html'
+      
