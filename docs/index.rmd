@@ -1,9 +1,18 @@
 ---
-output: html_document
+title: "Welcome to Beixuan's portfolio!"
+output:  html_document
 ---
 
+<style type="text/css">
 
-<h1><center>Welcome to Beixuan's portfolio!</center></h1>
+h1.title {
+  font-size: 38px;
+  color: white;
+  text-align: center;
+}
+
+</style>
+
 <br class="line-break">
 <br class="line-break">
 <center><img src="gtown.jpg" style="width:40%"></center>
