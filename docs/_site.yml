@@ -1,0 +1,11 @@
+name: 'Vis by Beixuan'
+output_dir: 'docs'
+navbar: 
+  title: '503 portfolio'
+  left: 
+    - text: 'Home'
+      href: 'index.html'
+    - text: 'HW6'
+      href: 'geospatial.html'
+    - text: 'flexdashboard'
+      href: 'final.html'
