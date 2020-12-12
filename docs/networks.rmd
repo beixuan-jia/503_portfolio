@@ -1,0 +1,122 @@
+---
+title: "A7 - Networks"
+author: "Beixuan Jia"
+date: "11/7/2020"
+output: html_document
+fig_width: 20 
+fig_height: 16 
+---
+
+```{r}
+knitr::opts_chunk$set(fig.width=20, fig.height=16) 
+library(dplyr)
+library(ggplot2)
+library(scales)
+options(scipen = 999)
+```
+
+```{r}
+library(readxl)
+state <- read_excel("State_to_State_Migrations_Table_2018.xls")
+```
+##### Data Cleaning
+Selected origin states: NY, TX, CA, MD 
+```{r}
+state <- state[,c(1, 19, 54, 81, 105)]
+state <- state[-c(1:5),]
+names(state) <- as.matrix(state[1, ])
+state <- state[-1, ]
+state[] <- lapply(state, function(x) type.convert(as.character(x)))
+state <- state[-c(1:4),]
+state = state[complete.cases(state), ]
+names(state) <- c("curr_states", "California", "Maryland", "New York", "Texas") 
+```
+
+```{r}
+state$California = as.numeric(as.character(state$California))
+state$`New York` = as.numeric(as.character(state$`New York`))
+state$Texas = as.numeric(as.character(state$Texas))
+state$Maryland = as.numeric(as.character(state$Maryland))
+```
+
+##### Generate the top 10 destinations for the 4 states
+```{r}
+top_dest <- function(x) {
+  rank <- state[order(-state[x]), ]
+  rank <- rank[,c('curr_states', x)]
+  rank$source <- x
+  names(rank)[names(rank)=='curr_states'] <- 'target'
+  names(rank)[names(rank)==x] <- 'count'
+  rank = rank[,c(3,1,2)]
+  head(rank, 10)
+}
+
+top_dest_NY <- top_dest("New York")
+top_dest_TX <- top_dest("Texas")
+top_dest_CA <- top_dest("California")
+top_dest_MD <- top_dest("Maryland")
+```
+
+##### Define Edges
+```{r}
+edge <- do.call("rbind", list(top_dest_NY, top_dest_TX, top_dest_CA, top_dest_MD))
+print(edge)
+```
+
+```{r}
+library("varhandle")
+edge$target <- unfactor(edge$target)
+```
+
+##### Define Nodes
+```{r}
+node1 <- unique(edge$target)
+node2 <- unique(edge$source)
+node <- c(node1, node2)
+node <- unique(node)
+```
+
+```{r}
+node = as.data.frame(node) 
+```
+
+##### Define Graph
+```{r}
+library(igraph)
+```
+
+Graph Info
+```{r}
+routes_igraph <- graph_from_data_frame(d = edge, vertices = unique(node), directed = TRUE)
+routes_igraph
+```
+
+##### Plot the Graph
+```{r}
+# deg <- degree(routes_igraph, mode="all")
+l <- layout_in_circle(routes_igraph)
+
+plot(routes_igraph, 
+     layout=l, 
+     edge.arrow.size=2, 
+     edge.color=rgb(0.1,0.7,0.8,0.5),
+     vertex.label.size=7,
+     vertex.label.cex=1.2, 
+     vertex.label.font=10,
+     vertex.shape="circle", 
+     vertex.color="pink",
+     vertex.size=23, 
+     vertex.label.color="black", 
+     edge.width=(edge$count)/4000)
+```
+The network graph shows that some popular destinations of people from the 4 states (NY, TX, CA and MD) are FL, CA, TX, NC, and VA. 
+
+Other findings: 
+
+* Among all 4 states, people from CA migrated the most and people from MD moved the least in 2018.
+* The Top 5 destinations for CA residents are TX, AZ, WA, NV, and OR
+* The Top 5 destinations for TX residents are CA, OK, CO, FL, and LA
+* The Top 5 destinations for NY residents are NJ, FL, PA, CA, and CT
+* The Top 5 destinations for MD residents are VA, PA, FL, TX, and DC
+
+This tells us people would generally moved to their adjacent states, with exceptions of big traveling states or states with a lot of job opportunities, such as FL, TX and CA. It's also very interesting that CA and TX are each other's top 1 destination.
